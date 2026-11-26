@@ -55,6 +55,19 @@ class PersistenceTests(unittest.TestCase):
         self.assertEqual(self.path.read_text(encoding="utf-8"), saved)
         self.assertEqual(sorted(p.name for p in self.path.parent.iterdir()), ["registry.json"])
 
+    def test_a_description_change_survives_a_restart(self):
+        service.update_description(Store(self.path), "bob", 3, {"description": "Hourly jobs"})
+        self.assertEqual(service.get_repository(Store(self.path), "bob", 3)["description"], "Hourly jobs")
+
+    def test_a_failed_description_save_changes_nothing(self):
+        store = Store(self.path)
+        saved = self.path.read_text(encoding="utf-8")
+        with mock.patch("app.store.os.replace", side_effect=OSError("disk full")):
+            with self.assertRaises(service.StorageError):
+                service.update_description(store, "bob", 3, {"description": "Hourly jobs"})
+        self.assertEqual(store.repositories[3]["description"], "Nightly reporting jobs")
+        self.assertEqual(self.path.read_text(encoding="utf-8"), saved)
+
     def test_an_unreadable_file_stops_instead_of_reseeding(self):
         self.path.parent.mkdir(parents=True)
         self.path.write_text("not json", encoding="utf-8")

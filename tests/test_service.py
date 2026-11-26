@@ -123,6 +123,44 @@ class ServiceTests(unittest.TestCase):
                     service.remove_repository(self.store, user, repository_id)
         self.assertEqual((self.store.repositories, self.store.analyses, self.store.next_id), before)
 
+    # TASK-003: changing a description
+
+    def snapshot(self):
+        return deepcopy((self.store.repositories, self.store.analyses, self.store.next_id))
+
+    def test_owner_changes_only_the_description(self):
+        before = self.snapshot()
+        result = service.update_description(self.store, "alice", 1, {"description": "Card payments v2"})
+        self.assertEqual(result["description"], "Card payments v2")
+        self.assertEqual(service.get_repository(self.store, "alice", 1)["description"], "Card payments v2")
+        repositories, analyses, next_id = before
+        repositories[1]["description"] = "Card payments v2"
+        self.assertEqual(self.snapshot(), (repositories, analyses, next_id))
+
+    def test_description_can_be_empty_or_cleared(self):
+        self.assertEqual(service.update_description(self.store, "alice", 1, {"description": ""})["description"], "")
+        self.assertIsNone(service.update_description(self.store, "alice", 1, {"description": None})["description"])
+
+    def test_bad_description_bodies_change_nothing(self):
+        before = self.snapshot()
+        for body in (None, [], {}, {"description": 5}, {"description": ["x"]},
+                     {"description": "x", "name": "renamed"}, {"owner": "bob"}):
+            with self.subTest(body=body):
+                with self.assertRaises(service.Invalid):
+                    service.update_description(self.store, "alice", 1, body)
+        self.assertEqual(self.snapshot(), before)
+
+    def test_description_access_is_checked_before_the_body(self):
+        before = self.snapshot()
+        for user, repository_id, body, error in (("mallory", 1, {"description": "x"}, service.Unauthorized),
+                                                 ("bob", 1, {"description": "x"}, service.Forbidden),
+                                                 ("bob", 1, {"name": "x"}, service.Forbidden),
+                                                 ("alice", 999, {"description": "x"}, service.NotFound)):
+            with self.subTest(user=user, repository_id=repository_id, body=body):
+                with self.assertRaises(error):
+                    service.update_description(self.store, user, repository_id, body)
+        self.assertEqual(self.snapshot(), before)
+
     def test_remove_leaves_other_repositories_alone_and_never_reuses_the_id(self):
         others = {key: deepcopy((repo, self.store.analyses[key]))
                   for key, repo in self.store.repositories.items() if key != 4}

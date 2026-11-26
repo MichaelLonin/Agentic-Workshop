@@ -122,6 +122,23 @@ class ApiTests(unittest.TestCase):
         _, repos = self.call("GET", "/repositories", user="alice")
         self.assertEqual([repo["id"] for repo in repos], [2])
 
+    # TASK-003: PATCH /repositories/{id}
+
+    def test_update_description(self):
+        _, analysis_before = self.call("GET", "/repositories/1/analysis", user="alice")
+        status, repo = self.call("PATCH", "/repositories/1", user="alice", body={"description": "Payments v2"})
+        self.assertEqual((status, repo["description"], repo["name"]), (200, "Payments v2", "payments-api"))
+        self.assertEqual(self.call("GET", "/repositories/1", user="alice")[1]["description"], "Payments v2")
+        self.assertEqual(self.call("GET", "/repositories/1/analysis", user="alice")[1], analysis_before)
+
+    def test_update_description_errors(self):
+        self.assertEqual(self.call("PATCH", "/repositories/1", user="bob", body={"description": "x"})[0], 403)
+        self.assertEqual(self.call("PATCH", "/repositories/1", user="mallory", body={"description": "x"})[0], 401)
+        self.assertEqual(self.call("PATCH", "/repositories/999", user="alice", body={"description": "x"})[0], 404)
+        self.assertEqual(self.call("PATCH", "/repositories/1", user="alice", body={"name": "x"})[0], 400)
+        self.assertEqual(self.call("PATCH", "/repositories/1", user="alice")[0], 400)
+        self.assertEqual(self.call("GET", "/repositories/1", user="alice")[1]["description"], "Card payment service")
+
     def test_remove_is_denied_for_others_and_unknown_users(self):
         self.assertEqual(self.call("DELETE", "/repositories/1", user="bob")[0], 403)
         self.assertEqual(self.call("DELETE", "/repositories/1", user="mallory")[0], 401)

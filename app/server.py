@@ -77,6 +77,11 @@ def remove_repository(req, repository_id):
     return 204, None
 
 
+@route("PATCH", r"/repositories/(\d+)")
+def update_description(req, repository_id):
+    return 200, service.update_description(req.store, req.user, int(repository_id), req.body)
+
+
 @route("GET", r"/repositories/(\d+)/analysis")
 def get_analysis(req, repository_id):
     return 200, service.get_analysis(req.store, req.user, int(repository_id))

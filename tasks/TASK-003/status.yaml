@@ -1,10 +1,10 @@
 task: TASK-003
-status: READY_FOR_DEVELOPMENT
-assigned_to: DEVELOPER
+status: READY_FOR_QA
+assigned_to: QA
 attempt: 1
-updated_by: ARCHITECT
+updated_by: DEVELOPER
 routing_mode: SELF_ROUTING
-routing_reason: Design for PATCH /repositories/{id} (description only) is ready for implementation
+routing_reason: PATCH /repositories/{id} description is built and 52 tests pass; READY_FOR_QA goes to QA
 result: DONE
 issue:
   type:

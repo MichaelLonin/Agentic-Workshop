@@ -161,3 +161,27 @@ def remove_repository(store, username, repository_id):
     repositories = {key: repo for key, repo in store.repositories.items() if key != repository_id}
     analyses = {key: analysis for key, analysis in store.analyses.items() if key != repository_id}
     _commit(store, repositories, analyses, store.next_id)
+
+
+def update_description(store, username, repository_id, body):
+    """Change only the description of one of the caller's repositories.
+
+    Access is checked before the body, so a non-owner learns nothing from validation.
+    Nothing else changes: no other field, no other repository, and not the analysis.
+    """
+    repo = _get_owned(store, username, repository_id)
+    if not isinstance(body, dict):
+        raise Invalid("Send a JSON object: {\"description\": <string or null>}")
+    if "description" not in body:
+        raise Invalid("'description' is required. Send null to clear it")
+    extra = sorted(key for key in body if key != "description")
+    if extra:
+        raise Invalid(f"Only 'description' can be changed. Remove: {', '.join(extra)}")
+    description = body["description"]
+    if description is not None and not isinstance(description, str):
+        raise Invalid("'description' must be a string or null")
+
+    updated = {**repo, "description": description}
+    repositories = {**store.repositories, repository_id: updated}
+    _commit(store, repositories, store.analyses, store.next_id)
+    return dict(updated)
