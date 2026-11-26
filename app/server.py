@@ -139,7 +139,13 @@ class Handler(BaseHTTPRequestHandler):
                 continue
 
             try:
-                body = self._read_json()
+                if method == "GET":
+                    # A GET ignores its body: read it off the connection (so the client
+                    # gets the response, not a reset) and throw it away unparsed.
+                    self._read_body()
+                    body = None
+                else:
+                    body = self._read_json()
             except BodyError as error:
                 self._send(error.status, {"error": str(error)})
                 return
@@ -165,9 +171,12 @@ class Handler(BaseHTTPRequestHandler):
         else:
             self._send(404, {"error": f"No endpoint for {method} {path}"})
 
-    def _read_json(self):
-        # Check the length before reading anything: a negative length would make read()
-        # wait for the client to close, blocking this single-threaded server for everyone.
+    def _read_body(self):
+        """The raw request body, or None when there is none.
+
+        Checks the length before reading anything: a negative length would make read()
+        wait for the client to close, blocking this single-threaded server for everyone.
+        """
         try:
             length = int(self.headers.get("Content-Length") or 0)
         except ValueError:
@@ -178,7 +187,11 @@ class Handler(BaseHTTPRequestHandler):
             raise BodyError(413, "Request body is too large")
         if not length:
             return None
-        return json.loads(self.rfile.read(length).decode("utf-8"))
+        return self.rfile.read(length)
+
+    def _read_json(self):
+        raw = self._read_body()
+        return None if raw is None else json.loads(raw.decode("utf-8"))
 
     def _send(self, status, payload, headers=None):
         data = b"" if payload is None else json.dumps(payload, indent=2).encode("utf-8")

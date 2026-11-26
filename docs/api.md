@@ -20,6 +20,8 @@ The sample app keeps a list of code repositories that users have registered, and
 | `GET /repositories/{id}/analysis` | The latest analysis: languages, files, lines of code, open findings, health score, contributors, summary | 401, 403, 404 |
 | `POST /repositories/{id}/scan` | Runs the analysis again now and returns it | 401, 403, 404 |
 
+A `GET` ignores any request body: the answer is the same as without one. Every request body is limited to 64 KiB (`413` if larger).
+
 Errors come back as `{"error": "<message>"}`. A `405` (wrong method on a known path) also has an `Allow` header listing the methods that path supports, e.g. `Allow: GET, POST`. Don't depend on the order.
 
 ## Seed data

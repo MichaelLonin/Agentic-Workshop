@@ -1,5 +1,6 @@
 import json
 import socket
+from copy import deepcopy
 import threading
 import unittest
 import urllib.error
@@ -122,6 +123,42 @@ class ApiTests(unittest.TestCase):
                 self.assertEqual(self.call(method, path, user="alice")[0], 404)
         _, repos = self.call("GET", "/repositories", user="alice")
         self.assertEqual([repo["id"] for repo in repos], [2])
+
+    # TASK-005: GET ignores the request body
+
+    def get_with_body(self, path, data, user=None):
+        request = urllib.request.Request(self.base + path, data=data, method="GET")
+        if user:
+            request.add_header("X-User", user)
+        try:
+            with OPENER.open(request, timeout=5) as response:
+                return response.status, json.loads(response.read() or b"null")
+        except urllib.error.HTTPError as error:
+            return error.code, json.loads(error.read() or b"null")
+
+    def test_get_health_ignores_any_body(self):
+        expected = self.call("GET", "/health")
+        self.assertEqual(expected, (200, {"status": "ok"}))
+        for data in (b'{"ping": 1}', b"{not json", b"hello monitor", b"\xff\xfe"):
+            with self.subTest(data=data):
+                self.assertEqual(self.get_with_body("/health", data), expected)
+
+    def test_other_gets_answer_the_same_with_a_body(self):
+        before = deepcopy(self.server.store.repositories)
+        for path, user in (("/repositories", "alice"), ("/repositories/1", "alice"),
+                           ("/repositories/1/analysis", "alice"), ("/repositories/999", "alice"),
+                           ("/repositories/3", "alice"), ("/repositories", "mallory")):
+            with self.subTest(path=path, user=user):
+                self.assertEqual(self.get_with_body(path, b'{"description": "hacked"}', user=user),
+                                 self.call("GET", path, user=user))
+        self.assertEqual(self.server.store.repositories, before)
+
+    def test_non_get_still_rejects_bad_json(self):
+        request = urllib.request.Request(self.base + "/repositories", data=b"{not json", method="POST")
+        with self.assertRaises(urllib.error.HTTPError) as caught:
+            OPENER.open(request, timeout=5)
+        self.assertEqual(caught.exception.code, 400)
+        self.assertIn("not valid JSON", json.loads(caught.exception.read())["error"])
 
     # TASK-004: Allow header on 405
 
