@@ -98,6 +98,11 @@ def get_analysis(req, repository_id):
     return 200, service.get_analysis(req.store, req.user, int(repository_id))
 
 
+@route("POST", "/repositories/scan")
+def scan_all_repositories(req):
+    return 200, service.scan_all_repositories(req.store, req.user)
+
+
 @route("POST", r"/repositories/(\d+)/scan")
 def scan_repository(req, repository_id):
     return 200, service.scan_repository(req.store, req.user, int(repository_id))

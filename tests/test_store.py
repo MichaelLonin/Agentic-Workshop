@@ -68,6 +68,28 @@ class PersistenceTests(unittest.TestCase):
         self.assertEqual(store.repositories[3]["description"], "Nightly reporting jobs")
         self.assertEqual(self.path.read_text(encoding="utf-8"), saved)
 
+    def test_a_bulk_scan_survives_a_restart(self):
+        results = service.scan_all_repositories(Store(self.path), "alice")
+        restarted = Store(self.path)
+        for item in results:
+            self.assertEqual(service.get_analysis(restarted, "alice", item["repository"]["id"]), item["analysis"])
+
+    def test_a_failed_bulk_save_changes_nothing(self):
+        store = Store(self.path)
+        saved = self.path.read_text(encoding="utf-8")
+        before = (dict(store.repositories), dict(store.analyses))
+        with mock.patch("app.store.os.replace", side_effect=OSError("disk full")):
+            with self.assertRaises(service.StorageError):
+                service.scan_all_repositories(store, "alice")
+        self.assertEqual((store.repositories, store.analyses), before)
+        self.assertEqual(self.path.read_text(encoding="utf-8"), saved)
+
+    def test_a_bulk_scan_with_nothing_to_scan_writes_nothing(self):
+        store = Store(self.path)
+        service.remove_repository(store, "chen", 4)
+        with mock.patch("app.store.os.replace", side_effect=AssertionError("must not save")):
+            self.assertEqual(service.scan_all_repositories(store, "chen"), [])
+
     def test_an_unreadable_file_stops_instead_of_reseeding(self):
         self.path.parent.mkdir(parents=True)
         self.path.write_text("not json", encoding="utf-8")

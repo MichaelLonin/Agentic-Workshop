@@ -1,10 +1,10 @@
 task: TASK-007
-status: READY_FOR_DEVELOPMENT
-assigned_to: DEVELOPER
+status: READY_FOR_QA
+assigned_to: QA
 attempt: 1
-updated_by: ARCHITECT
+updated_by: DEVELOPER
 routing_mode: SELF_ROUTING
-routing_reason: Design for all-or-nothing POST /repositories/scan is ready for implementation
+routing_reason: Bulk scan POST /repositories/scan is built (all or nothing) and developer tests pass; READY_FOR_QA goes to QA
 result: DONE
 issue:
   type:

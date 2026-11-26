@@ -124,6 +124,22 @@ class ApiTests(unittest.TestCase):
         _, repos = self.call("GET", "/repositories", user="alice")
         self.assertEqual([repo["id"] for repo in repos], [2])
 
+    # TASK-007: POST /repositories/scan
+
+    def test_bulk_scan_endpoint(self):
+        status, results = self.call("POST", "/repositories/scan", user="alice")
+        self.assertEqual(status, 200)
+        self.assertEqual([item["repository"]["id"] for item in results], [1, 2])
+        self.assertEqual({item["repository"]["owner"] for item in results}, {"alice"})
+        for item in results:
+            self.assertEqual(self.call("GET", f"/repositories/{item['repository']['id']}/analysis", user="alice"),
+                             (200, item["analysis"]))
+
+    def test_bulk_scan_errors_and_routing(self):
+        self.assertEqual(self.call("POST", "/repositories/scan", user="mallory")[0], 401)
+        self.assertEqual(self.raw("GET", "/repositories/scan")[:2], (405, {"POST"}))
+        self.assertEqual(self.call("POST", "/repositories/1/scan", user="alice")[0], 200)
+
     # TASK-005: GET ignores the request body
 
     def get_with_body(self, path, data, user=None):

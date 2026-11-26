@@ -18,6 +18,7 @@ The sample app keeps a list of code repositories that users have registered, and
 | `PATCH /repositories/{id}` | Changes the description of one of your repositories. Body: exactly `{"description": <string or null>}` (`null` clears it). Returns 200 and the repository; nothing else changes, and the analysis isn't re-run | 400 invalid body or other keys, 401, 403 not yours, 404, 500 couldn't be saved (nothing changed) |
 | `DELETE /repositories/{id}` | Removes one of your repositories and its analysis, at once and for good. Returns 204 and no body; the id is never reused | 401, 403 not yours, 404, 500 couldn't be saved (nothing changed) |
 | `GET /repositories/{id}/analysis` | The latest analysis: languages, files, lines of code, open findings, health score, contributors, summary | 401, 403, 404 |
+| `POST /repositories/scan` | Scans all your repositories at once, all or nothing, with one timestamp. Returns 200 and a list sorted by id: `{"repository": {id, name, url, owner}, "analysis": {...}}`; `[]` if you have none | 401, 500 a scan or the save failed (nothing changed) |
 | `POST /repositories/{id}/scan` | Runs the analysis again now and returns it | 401, 403, 404 |
 
 A `GET` ignores any request body: the answer is the same as without one. Every request body is limited to 64 KiB (`413` if larger).

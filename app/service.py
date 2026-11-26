@@ -41,6 +41,10 @@ class StorageError(ServiceError):
     status = 500
 
 
+class ScanError(ServiceError):
+    status = 500
+
+
 def now_utc():
     return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
@@ -166,15 +170,46 @@ def get_analysis(store, username, repository_id):
     return dict(store.analyses[repository_id])
 
 
+def _rescan(repo, scanned_at):
+    """One repository scanned at scanned_at: (updated repository, new analysis). Changes nothing."""
+    updated = {**repo, "last_scanned_at": scanned_at}
+    return updated, analyzer.analyze(updated, scanned_at)
+
+
 def scan_repository(store, username, repository_id):
     """Run the (pretend) analysis again now and return the new result."""
     repo = _get_owned(store, username, repository_id)
-    scanned_at = now_utc()
-    updated = {**repo, "last_scanned_at": scanned_at}
+    updated, analysis = _rescan(repo, now_utc())
     repositories = {**store.repositories, repository_id: updated}
-    analyses = {**store.analyses, repository_id: analyzer.analyze(updated, scanned_at)}
+    analyses = {**store.analyses, repository_id: analysis}
     _commit(store, repositories, analyses, store.next_id)
-    return dict(analyses[repository_id])
+    return dict(analysis)
+
+
+def scan_all_repositories(store, username):
+    """Scan every repository the caller owns, all or nothing, with one timestamp.
+
+    Builds the whole new state first and saves it in one commit, so a failed scan or
+    a failed save leaves memory and the data file exactly as they were.
+    """
+    require_user(store, username)
+    owned = sorted((repo for repo in store.repositories.values() if repo["owner"] == username),
+                   key=lambda repo: repo["id"])
+    if not owned:
+        return []
+
+    scanned_at = now_utc()
+    repositories, analyses = dict(store.repositories), dict(store.analyses)
+    try:
+        for repo in owned:
+            repositories[repo["id"]], analyses[repo["id"]] = _rescan(repo, scanned_at)
+    except Exception as error:
+        raise ScanError("Bulk scan failed, so nothing was changed") from error
+    _commit(store, repositories, analyses, store.next_id)
+    return [
+        {"repository": _summary(repositories[repo["id"]]), "analysis": dict(analyses[repo["id"]])}
+        for repo in owned
+    ]
 
 
 def remove_repository(store, username, repository_id):

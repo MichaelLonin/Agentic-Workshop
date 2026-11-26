@@ -1,5 +1,6 @@
 import unittest
 from copy import deepcopy
+from unittest import mock
 
 from app import analyzer, service
 from app.store import Store
@@ -148,6 +149,50 @@ class ServiceTests(unittest.TestCase):
                 with self.assertRaises(error):
                     service.remove_repository(self.store, user, repository_id)
         self.assertEqual((self.store.repositories, self.store.analyses, self.store.next_id), before)
+
+    # TASK-007: scanning all of a user's repositories at once
+
+    def test_bulk_scan_scans_each_owned_repository_once_with_one_timestamp(self):
+        others = deepcopy({key: (self.store.repositories[key], self.store.analyses[key]) for key in (3, 4)})
+        with mock.patch("app.service.analyzer.analyze", wraps=analyzer.analyze) as analyze:
+            results = service.scan_all_repositories(self.store, "alice")
+        self.assertEqual(analyze.call_count, 2)
+        self.assertEqual([item["repository"]["id"] for item in results], [1, 2])
+        (stamp,) = {item["analysis"]["scanned_at"] for item in results}  # one timestamp for the run
+        for item in results:
+            repository_id = item["repository"]["id"]
+            self.assertEqual(self.store.repositories[repository_id]["last_scanned_at"], stamp)
+            self.assertEqual(self.store.analyses[repository_id], item["analysis"])
+        self.assertEqual({key: (self.store.repositories[key], self.store.analyses[key]) for key in (3, 4)}, others)
+
+    def test_bulk_scan_with_no_repositories_is_empty_and_changes_nothing(self):
+        service.remove_repository(self.store, "chen", 4)
+        before = self.snapshot()
+        self.assertEqual(service.scan_all_repositories(self.store, "chen"), [])
+        self.assertEqual(self.snapshot(), before)
+
+    def test_bulk_scan_needs_a_known_user(self):
+        before = self.snapshot()
+        with self.assertRaises(service.Unauthorized):
+            service.scan_all_repositories(self.store, "mallory")
+        self.assertEqual(self.snapshot(), before)
+
+    def test_bulk_scan_is_all_or_nothing_when_a_scan_fails(self):
+        before = self.snapshot()
+        real = analyzer.analyze
+        calls = []
+
+        def fail_on_second(repo, scanned_at):
+            calls.append(repo["id"])
+            if len(calls) == 2:
+                raise RuntimeError("analyser crashed")
+            return real(repo, scanned_at)
+
+        with mock.patch("app.service.analyzer.analyze", side_effect=fail_on_second):
+            with self.assertRaises(service.ScanError) as caught:
+                service.scan_all_repositories(self.store, "alice")
+        self.assertEqual(caught.exception.status, 500)
+        self.assertEqual(self.snapshot(), before)
 
     # TASK-003: changing a description
 
