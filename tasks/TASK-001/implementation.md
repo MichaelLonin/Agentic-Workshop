@@ -12,6 +12,12 @@ A real implementation, not a stub. `POST /repositories` registers a repository f
 - Duplicates: the trimmed URL must not equal the trimmed URL of any existing repository, from any owner. The comparison is exact and case-sensitive.
 - The analysis is created in the same call, so `GET /repositories/{id}/analysis` works straight away. `registered_at` and `last_scanned_at` are the same timestamp.
 
+**Attempt 2: the SECURITY review's changes (`architecture.md`, "SECURITY review, attempt 1"):**
+
+- **Credentials in URLs are rejected:** a URL with any user-info part (`user@`, `user:pw@`, `:pw@` or an empty `@`) gets `400` with `'url' must not contain a username or password`. The URL is never echoed, and nothing is stored.
+- **Field limits** (`app/service.py`, constants `MAX_NAME = 200`, `MAX_URL = 2048`, `MAX_DESCRIPTION = 2000`): name and URL are checked after trimming. The description is checked as stored, because it isn't trimmed. Anything longer gets `400`. As the review asked, `update_description` (TASK-003) uses the same `MAX_DESCRIPTION`.
+- **Request body limits** (`app/server.py`, `_read_json`, for every endpoint): `Content-Length` is checked before anything is read. Not a number or negative gets `400`; over `MAX_BODY = 64 KiB` gets `413` `{"error": "Request body is too large"}`, unread.
+
 ## Files changed
 
 - `app/service.py`: new `Conflict` error (409), `_is_web_url()` and `register_repository()`.
@@ -33,3 +39,4 @@ A real implementation, not a stub. `POST /repositories` registers a repository f
 ## Attempts
 
 - Attempt 1: first version.
+- Attempt 2: the SECURITY review's fixes (credentials in URLs rejected, field limits, request body limits). The limits also apply to TASK-003's description update and to every endpoint's request body. A 2,001-character description is now rejected by `PATCH` too, so QA should know this when checking TASK-003. Clients still uploading a body over 64 KiB may see the connection close before they read the `413`, because the server answers without reading the body, as designed.

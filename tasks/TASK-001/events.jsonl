@@ -4,3 +4,4 @@
 {"timestamp":"2026-11-26T15:29:49Z","task":"TASK-001","agent":"DEVELOPER","event":"IMPLEMENTATION_READY","to":"QA","reason":"POST /repositories built as designed, 33 tests pass"}
 {"timestamp":"2026-11-26T15:38:23Z","task":"TASK-001","agent":"QA","event":"QA_FAILED","to":"SECURITY","type":"SECURITY_RISK","attempt":1,"reason":"ACs pass; credentials in URLs are stored and returned, and there are no size limits"}
 {"timestamp":"2026-11-26T15:41:14Z","task":"TASK-001","agent":"SECURITY","event":"SECURITY_REVIEWED","to":"DEVELOPER","attempt":2,"reason":"Reject URLs with credentials; cap body at 64 KiB and field lengths; reject negative Content-Length; 409 probing accepted"}
+{"timestamp":"2026-11-26T15:43:01Z","task":"TASK-001","agent":"DEVELOPER","event":"IMPLEMENTATION_READY","to":"QA","attempt":2,"reason":"Security fixes built; all developer tests pass, QA test_risk_* tests fail as expected and are QA-owned"}

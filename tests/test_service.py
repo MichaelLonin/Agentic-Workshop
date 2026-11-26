@@ -83,6 +83,32 @@ class ServiceTests(unittest.TestCase):
         self.assertEqual(len(self.store.repositories), 4)
         self.assertEqual(self.store.next_id, 5)
 
+    def test_register_rejects_urls_with_credentials_without_echoing_them(self):
+        for url in ("https://user:SECRET_TOKEN@github.com/org/private",
+                    "https://SECRET_TOKEN@github.com/org/private",
+                    "https://:SECRET_TOKEN@github.com/org/private",
+                    "https://@github.com/org/private"):
+            with self.subTest(url=url):
+                with self.assertRaises(service.Invalid) as caught:
+                    self.register(url=url)
+                self.assertEqual(str(caught.exception), "'url' must not contain a username or password")
+        self.assertEqual(len(self.store.repositories), 4)
+
+    def test_register_enforces_field_length_limits(self):
+        too_long = [
+            {"name": "n" * (service.MAX_NAME + 1)},
+            {"url": "https://example.com/" + "p" * service.MAX_URL},
+            {"description": "d" * (service.MAX_DESCRIPTION + 1)},
+        ]
+        for fields in too_long:
+            with self.subTest(field=next(iter(fields))):
+                with self.assertRaises(service.Invalid):
+                    self.register(**fields)
+        self.assertEqual(len(self.store.repositories), 4)
+        at_limit = self.register(name="n" * service.MAX_NAME, description="d" * service.MAX_DESCRIPTION,
+                                 url="https://example.com/" + "p" * (service.MAX_URL - len("https://example.com/")))
+        self.assertEqual(len(at_limit["url"]), service.MAX_URL)
+
     def test_register_rejects_a_url_already_registered_by_anyone(self):
         with self.assertRaises(service.Conflict):
             self.register(user="chen", url="  https://github.com/example-org/payments-api  ")
@@ -148,6 +174,12 @@ class ServiceTests(unittest.TestCase):
             with self.subTest(body=body):
                 with self.assertRaises(service.Invalid):
                     service.update_description(self.store, "alice", 1, body)
+        self.assertEqual(self.snapshot(), before)
+
+    def test_description_update_uses_the_same_length_limit(self):
+        before = self.snapshot()
+        with self.assertRaises(service.Invalid):
+            service.update_description(self.store, "alice", 1, {"description": "d" * (service.MAX_DESCRIPTION + 1)})
         self.assertEqual(self.snapshot(), before)
 
     def test_description_access_is_checked_before_the_body(self):

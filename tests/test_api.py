@@ -1,10 +1,11 @@
 import json
+import socket
 import threading
 import unittest
 import urllib.error
 import urllib.request
 
-from app.server import RegistryServer
+from app.server import MAX_BODY, RegistryServer
 
 # Ignore any system proxy: these requests go to a server on this machine.
 OPENER = urllib.request.build_opener(urllib.request.ProxyHandler({}))
@@ -181,6 +182,38 @@ class ApiTests(unittest.TestCase):
         self.assertEqual(self.call("DELETE", "/repositories/1", user="bob")[0], 403)
         self.assertEqual(self.call("DELETE", "/repositories/1", user="mallory")[0], 401)
         self.assertEqual(self.call("GET", "/repositories/1", user="alice")[0], 200)
+
+    # TASK-001 security review: credentials in URLs and request size limits
+
+    def test_register_url_with_credentials_is_400_without_echo(self):
+        body = {"name": "private", "url": "https://user:SECRET_TOKEN@github.com/org/private"}
+        status, error = self.call("POST", "/repositories", user="bob", body=body)
+        self.assertEqual(status, 400)
+        self.assertNotIn("SECRET_TOKEN", json.dumps(error))
+        self.assertEqual(len(self.call("GET", "/repositories", user="bob")[1]), 1)
+
+    def send_headers_only(self, content_length):
+        """POST with this Content-Length and no body. Answering at all proves the body was not read."""
+        host, port = self.server.server_address
+        with socket.create_connection((host, port), timeout=5) as sock:
+            sock.sendall((f"POST /repositories HTTP/1.0\r\nX-User: bob\r\n"
+                          f"Content-Length: {content_length}\r\n\r\n").encode("ascii"))
+            response = b""
+            while chunk := sock.recv(65536):
+                response += chunk
+        head, _, body = response.partition(b"\r\n\r\n")
+        return int(head.split(b" ", 2)[1]), json.loads(body)
+
+    def test_oversized_negative_or_bad_content_length_is_refused_unread(self):
+        self.assertEqual(self.send_headers_only(MAX_BODY + 1), (413, {"error": "Request body is too large"}))
+        self.assertEqual(self.send_headers_only(-1)[0], 400)
+        self.assertEqual(self.send_headers_only("abc")[0], 400)
+        self.assertEqual(len(self.call("GET", "/repositories", user="bob")[1]), 1)
+
+    def test_body_just_under_the_limit_is_still_read(self):
+        body = {"name": "padded", "url": "https://example.com/padded", "padding": "x" * 60000}
+        status, repo = self.call("POST", "/repositories", user="bob", body=body)
+        self.assertEqual((status, repo["name"]), (201, "padded"))
 
     def test_register_duplicate_url_is_409(self):
         body = {"name": "copy", "url": "https://github.com/example-org/data-pipeline"}

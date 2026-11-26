@@ -1,10 +1,10 @@
 task: TASK-001
-status: READY_FOR_DEVELOPMENT
-assigned_to: DEVELOPER
+status: READY_FOR_QA
+assigned_to: QA
 attempt: 2
-updated_by: SECURITY
+updated_by: DEVELOPER
 routing_mode: SELF_ROUTING
-routing_reason: Security review confirmed two risks that need code changes (credentials in URLs, no size limits); see Security notes in architecture.md
+routing_reason: Security fixes built (URL credentials rejected, field and body limits); READY_FOR_QA goes to QA. QA's 2 test_risk_* tests now fail as expected, see implementation.md
 result: DONE
 issue:
   type:

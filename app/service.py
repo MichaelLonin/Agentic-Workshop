@@ -84,6 +84,25 @@ def list_repositories(store, username):
     ]
 
 
+# Security limits (TASK-001 security review), in characters, checked on the stored value.
+MAX_NAME = 200
+MAX_URL = 2048
+MAX_DESCRIPTION = 2000
+
+
+def _check_description(description):
+    if description is not None and not isinstance(description, str):
+        raise Invalid("'description' must be a string or null")
+    if description is not None and len(description) > MAX_DESCRIPTION:
+        raise Invalid(f"'description' must be at most {MAX_DESCRIPTION} characters")
+
+
+def _has_credentials(url):
+    """True when the URL has a user-info part (user, user:password or an empty one before '@')."""
+    parts = urlsplit(url)
+    return parts.username is not None or parts.password is not None
+
+
 def _is_web_url(url):
     """True for an absolute http or https URL with a host."""
     try:
@@ -108,11 +127,17 @@ def register_repository(store, username, body):
     url = body.get("url")
     if not isinstance(url, str) or not _is_web_url(url.strip()):
         raise Invalid("'url' is required and must be an absolute http or https URL with a host")
+    # Never echo the URL back here: it may contain a secret.
+    if _has_credentials(url.strip()):
+        raise Invalid("'url' must not contain a username or password")
     description = body.get("description")
-    if description is not None and not isinstance(description, str):
-        raise Invalid("'description' must be a string or null")
+    _check_description(description)
 
     name, url = name.strip(), url.strip()
+    if len(name) > MAX_NAME:
+        raise Invalid(f"'name' must be at most {MAX_NAME} characters")
+    if len(url) > MAX_URL:
+        raise Invalid(f"'url' must be at most {MAX_URL} characters")
     if any(repo["url"].strip() == url for repo in store.repositories.values()):
         raise Conflict("This URL is already registered")
 
@@ -178,8 +203,7 @@ def update_description(store, username, repository_id, body):
     if extra:
         raise Invalid(f"Only 'description' can be changed. Remove: {', '.join(extra)}")
     description = body["description"]
-    if description is not None and not isinstance(description, str):
-        raise Invalid("'description' must be a string or null")
+    _check_description(description)
 
     updated = {**repo, "description": description}
     repositories = {**store.repositories, repository_id: updated}

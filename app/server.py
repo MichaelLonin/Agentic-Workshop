@@ -27,6 +27,17 @@ from .store import DataFileError, Store
 DEFAULT_USER = "alice"
 ROUTES = []
 
+# Largest request body the server reads (TASK-001 security review). Bigger ones get 413 unread.
+MAX_BODY = 64 * 1024
+
+
+class BodyError(Exception):
+    """A request body the server refuses to read. Carries the HTTP status to answer with."""
+
+    def __init__(self, status, message):
+        super().__init__(message)
+        self.status = status
+
 
 def route(method, pattern):
     """Register a handler. Groups in the pattern become extra arguments."""
@@ -129,6 +140,9 @@ class Handler(BaseHTTPRequestHandler):
 
             try:
                 body = self._read_json()
+            except BodyError as error:
+                self._send(error.status, {"error": str(error)})
+                return
             except ValueError as error:
                 self._send(400, {"error": f"Body is not valid JSON: {error}"})
                 return
@@ -152,7 +166,16 @@ class Handler(BaseHTTPRequestHandler):
             self._send(404, {"error": f"No endpoint for {method} {path}"})
 
     def _read_json(self):
-        length = int(self.headers.get("Content-Length") or 0)
+        # Check the length before reading anything: a negative length would make read()
+        # wait for the client to close, blocking this single-threaded server for everyone.
+        try:
+            length = int(self.headers.get("Content-Length") or 0)
+        except ValueError:
+            raise BodyError(400, "Content-Length must be a whole number") from None
+        if length < 0:
+            raise BodyError(400, "Content-Length must not be negative")
+        if length > MAX_BODY:
+            raise BodyError(413, "Request body is too large")
         if not length:
             return None
         return json.loads(self.rfile.read(length).decode("utf-8"))
