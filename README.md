@@ -41,6 +41,8 @@ After that, whenever someone pushes, tell your AI tool: **"Check for work."** If
 
 ## Stage by stage
 
+From Stage 2 on, a facilitator may add more small tasks (`TASK-002`, `TASK-003`, …). The watchers check every task folder, so nothing changes for you: your role may just have turns waiting on more than one task.
+
 **Stage 1: manual hand-off (10 minutes).** A facilitator gives your Product Owner a paper wish card. The Product Owner tells their AI tool:
 
 > Here is our wish card from Business: "...". Put it in tasks/TASK-001/task.md word for word, commit and push it. Then do your PRODUCT_BA turn.
@@ -69,7 +71,7 @@ From then on, only the Scrum Master decides who works next. Everyone else report
 
 **Stage 4: resilience (15 minutes).** A facilitator changes something in your repository. Keep working as normal, and watch whether your Scrum Master routes it correctly.
 
-**Stage 5: hands off (12 minutes).** A facilitator adds a small new task, `TASK-002`. Take your hands off the keyboard and let the watchers and the Scrum Master run it from start to finish. If your AI tool can't be started by the watcher, paste the prompt when it beeps, and do nothing else.
+**Stage 5: hands off (12 minutes).** A facilitator adds a small new task. Take your hands off the keyboard and let the watchers and the Scrum Master run it from start to finish. If your AI tool can't be started by the watcher, paste the prompt when it beeps, and do nothing else.
 
 To watch it happen: `python scripts/events.py --follow`.
 
@@ -81,12 +83,14 @@ To watch it happen: `python scripts/events.py --follow`.
 | `WORKFLOW.md` | Whose turn it is, who owns which file, how work is routed |
 | `roles/` | One instruction file per role |
 | `templates/` | Starting points for the artifacts each role writes |
-| `tasks/TASK-001/` | Your team's task: `task.md`, `status.yaml`, `events.jsonl`, and the artifacts as you write them |
+| `tasks/` | One folder per task, starting with `TASK-001/`: `task.md`, `status.yaml`, `events.jsonl`, and the artifacts as you write them |
 | `app/` | The sample app: a small repository registry API |
 | `tests/` | The app's tests |
 | `docs/api.md` | What the app does today, and how to add an endpoint |
 | `scripts/watch.py` | The watcher (Stage 2 on) |
 | `scripts/events.py` | Shows the task status and event timeline |
+| `scripts/new_task.py` | Facilitators only: releases a task card as a new task |
+| `facilitator/` | Facilitators only: the run sheet and the extra task cards |
 
 ## Run the app and tests
 
