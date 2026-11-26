@@ -40,4 +40,19 @@
 
 ## Security notes
 
-- None reported. One design point: the analyser only hashes the URL and never fetches it, so there's no server-side request risk. Allowing only `http`/`https` also keeps out `file:`, `javascript:` and similar schemes.
+- Design point (unchanged): the analyser only hashes the URL and never fetches it, so there's no server-side request risk. Allowing only `http`/`https` keeps out `file:`, `javascript:` and similar schemes.
+
+### SECURITY review, attempt 1 (QA finding `SECURITY_RISK`, qa.md)
+
+Confirmed by reading `app/service.py` (`_is_web_url`, `register_repository`) and `app/server.py` (`_read_json`). The code must change, so the task goes back to DEVELOPER.
+
+1. **Credentials in the URL: real risk, MUST FIX.** `https://user:TOKEN@host/...` passes `_is_web_url`. It is stored, returned by `POST` and `GET /repositories/{id}`, and, through the TASK-002 snapshot, written to `data/registry.json` in plain text. A registry has no reason to hold secrets.
+   - **Change:** in `register_repository`, reject a URL whose `urlsplit` result has a `username` or `password` (i.e. an `@` user-info part). Return `400` `{"error": "'url' must not contain a username or password"}`. Reject it rather than quietly removing the part, so that what's stored is exactly what the user sent and the AC6 duplicate rule stays simple. Don't echo the URL back in the error message.
+   - **Note for the PO:** this narrows AC1 by one case (URLs with credentials are no longer "valid"). It doesn't touch the PO's decision to accept any host.
+2. **No size limits: real risk, MUST FIX (scaled to the workshop).** `_read_json` reads whatever `Content-Length` says, and the data is kept for good, so one request can make memory and the data file grow without limit. A **negative** `Content-Length` makes `rfile.read(-1)` wait until the client closes the connection, and that blocks the single-threaded server for everyone.
+   - **Change in `app/server.py` `_read_json` (applies to every endpoint):** a `Content-Length` that is negative or not a number → `400`. Anything over **64 KiB** (65,536 bytes) → `413` `{"error": "Request body is too large"}`, without reading the body.
+   - **Change in `app/service.py`:** module constants `MAX_NAME = 200`, `MAX_URL = 2048` and `MAX_DESCRIPTION = 2000` characters, checked after trimming. Anything longer → `400`. These are security limits chosen to be generous; the PO may tune the numbers. TASK-003's `update_description` should use the same `MAX_DESCRIPTION`.
+3. **409 reveals that a URL is registered: accepted, no change.** It follows directly from the PO's "duplicates across all users" decision and is already listed under Risks.
+4. **Out of scope, noted:** `X-User` is a claim, not authentication, so anyone can act as any user. That's how the app works today and isn't part of TASK-001.
+
+**Tests:** DEVELOPER adds tests for a URL with credentials → 400 and nothing stored; an oversized field → 400; a body over 64 KiB → 413; a negative `Content-Length` → 400. QA's `tests/test_qa_task001.py` currently records the risky behaviour (`test_risk_*`); QA owns those tests and will turn them around on the next pass.

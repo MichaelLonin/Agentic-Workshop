@@ -1,11 +1,11 @@
 task: TASK-001
-status: BLOCKED
-assigned_to: SECURITY
-attempt: 1
-updated_by: QA
+status: READY_FOR_DEVELOPMENT
+assigned_to: DEVELOPER
+attempt: 2
+updated_by: SECURITY
 routing_mode: SELF_ROUTING
-routing_reason: QA found security risks (credentials in URLs stored and returned; no size limits); SECURITY_RISK goes to SECURITY
-result: FAILED
+routing_reason: Security review confirmed two risks that need code changes (credentials in URLs, no size limits); see Security notes in architecture.md
+result: DONE
 issue:
-  type: SECURITY_RISK
-  description: All ACs pass, but URLs with embedded credentials are stored, returned and written to disk, and name/description/body have no size limit. Evidence in qa.md and tests/test_qa_task001.py.
+  type:
+  description:
