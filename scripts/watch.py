@@ -11,6 +11,7 @@ Examples:
     python scripts/watch.py --role SCRUM_MASTER --tool claude
     python scripts/watch.py --role QA --check
     python scripts/watch.py --role QA --command "mytool run {prompt}"
+    python scripts/watch.py --role QA --tool claude --agent qa   (starts .claude/agents/qa.md)
 
 Instant routing for the Scrum Master: with --role SCRUM_MASTER, the watcher makes
 routine hand-overs itself (NEW, or a READY_FOR_ status with no issue), straight
@@ -425,6 +426,8 @@ def parse_args(argv):
                         help="notify (default): beep and copy the prompt. Others: start that AI tool.")
     parser.add_argument("--command",
                         help='Your own command to start an AI tool. It must contain {prompt}.')
+    parser.add_argument("--agent",
+                        help="With --tool claude: start this agent from .claude/agents/, e.g. qa.")
     parser.add_argument("--check", action="store_true",
                         help="Pull once, say whether it's your turn, and exit.")
     parser.add_argument("--interval", type=float, default=10, help="Seconds between checks (default 10).")
@@ -445,6 +448,10 @@ def parse_args(argv):
         parser.error(f"Unknown role {', '.join(unknown) or args.role!r}. Use one of: {', '.join(ROLE_FILES)}")
     if args.command and "{prompt}" not in args.command:
         parser.error("--command must contain {prompt}")
+    if args.agent and (args.tool != "claude" or args.command):
+        parser.error("--agent works only with --tool claude")
+    if args.agent and not (ROOT / ".claude" / "agents" / f"{args.agent}.md").exists():
+        parser.error(f"No agent named {args.agent!r} in .claude/agents/")
     return args
 
 
@@ -477,6 +484,9 @@ def main(argv=None):
         template, tool_label = None, "notify mode (beep and copy the prompt)"
     else:
         template, tool_label = TOOLS[args.tool], args.tool
+        if args.agent:
+            template = template + ["--agent", args.agent]
+            tool_label += f" with the {args.agent} agent"
     if template and resolve_command(template, "") is None:
         sys.exit(
             f"Can't find '{template[0]}' on this computer. "
