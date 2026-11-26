@@ -1,11 +1,11 @@
 task: TASK-002
-status: BLOCKED
-assigned_to: SECURITY
+status: READY_FOR_QA
+assigned_to: QA
 attempt: 1
-updated_by: QA
+updated_by: SECURITY
 routing_mode: SELF_ROUTING
-routing_reason: All ACs pass, but the new on-disk persistence needs a security review before the Product Owner; SECURITY_RISK goes to SECURITY
-result: FAILED
+routing_reason: Security review accepted all three findings with no code change (see Security notes in architecture.md); back to QA
+result: DONE
 issue:
-  type: SECURITY_RISK
-  description: ACs pass. Needs security review - registry data is stored in plain text in data/registry.json, 403 reveals that an id exists, and the data file has no lock. Details in qa.md.
+  type:
+  description:

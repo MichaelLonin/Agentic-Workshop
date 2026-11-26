@@ -39,4 +39,14 @@
 
 ## Security notes
 
-- None reported. The data file path comes from the command line, never from a request, so a request can't steer where data is written.
+- Design point: the data file path comes from the command line, never from a request, so a request can't steer where data is written.
+
+### SECURITY review, attempt 1 (QA finding `SECURITY_RISK`, qa.md)
+
+Reviewed `app/store.py` (`_save`, `load`), `app/server.py` (`--data`, `--reset`), `.gitignore` and `service._has_credentials`. **Verdict: all three findings accepted, no code change, back to QA.**
+
+1. **Plain-text `data/registry.json`: accepted.** What it holds is demo users (name, demo email), repository names, URLs, descriptions and pretend analyses. There are no passwords or tokens: TASK-001 attempt 2 now rejects URLs with a username or password (`_has_credentials`), so secrets can't get into the file through registration. The file can't leak through Git either, because `data/` is in `.gitignore` and nothing under `data/` is tracked. The atomic save uses `tempfile.mkstemp`, which creates the file readable only by its owner on Linux/macOS (mode 0600, kept through `os.replace`); on Windows it inherits the folder's permissions. Encrypting a workshop demo file at rest would be out of proportion.
+   - **Condition:** this depends on TASK-001's credential rejection shipping. If TASK-001 is rejected or that check is removed, reopen this item.
+   - **Housekeeping:** a `data/registry.json` written *before* the TASK-001 fix could still hold a test URL with credentials. Start once with `--reset` (or delete the file) on any machine where that was tried.
+2. **403 reveals that an id exists: accepted.** Ids are sequential small integers, so they're easy to guess anyway. `X-User` is a claim rather than authentication, so any caller can already act as the owner. Returning 404 here would hide nothing real, and it would make `DELETE` behave differently from `GET`, `PATCH` and `scan`. Changing this everywhere would be a separate product decision.
+3. **No lock on the data file: accepted as a documented operational limit.** This is about integrity between *two* server processes (lost updates), not confidentiality, and it was already stated in Risks: "only one server process should use a given data file". Within one process the server is single-threaded and each save is atomic, so the file is never left half-written. Cross-platform file locking isn't worth adding for a workshop demo.
