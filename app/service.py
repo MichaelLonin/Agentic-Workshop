@@ -37,6 +37,10 @@ class Conflict(ServiceError):
     status = 409
 
 
+class StorageError(ServiceError):
+    status = 500
+
+
 def now_utc():
     return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
@@ -60,6 +64,14 @@ def _get_owned(store, username, repository_id):
     if repo["owner"] != username:
         raise Forbidden("You don't have access to this repository")
     return repo
+
+
+def _commit(store, repositories, analyses, next_id):
+    """Save the new state, then use it. If saving fails, nothing has changed."""
+    try:
+        store.commit(repositories, analyses, next_id)
+    except OSError as error:
+        raise StorageError(f"The change couldn't be saved, so nothing was changed: {error}") from error
 
 
 def list_repositories(store, username):
@@ -114,10 +126,9 @@ def register_repository(store, username, body):
         "registered_at": now,
         "last_scanned_at": now,
     }
-    analysis = analyzer.analyze(repo, now)
-    store.repositories[repo["id"]] = repo
-    store.analyses[repo["id"]] = analysis
-    store.next_id += 1
+    repositories = {**store.repositories, repo["id"]: repo}
+    analyses = {**store.analyses, repo["id"]: analyzer.analyze(repo, now)}
+    _commit(store, repositories, analyses, store.next_id + 1)
     return dict(repo)
 
 
@@ -134,6 +145,19 @@ def scan_repository(store, username, repository_id):
     """Run the (pretend) analysis again now and return the new result."""
     repo = _get_owned(store, username, repository_id)
     scanned_at = now_utc()
-    repo["last_scanned_at"] = scanned_at
-    store.analyses[repository_id] = analyzer.analyze(repo, scanned_at)
-    return dict(store.analyses[repository_id])
+    updated = {**repo, "last_scanned_at": scanned_at}
+    repositories = {**store.repositories, repository_id: updated}
+    analyses = {**store.analyses, repository_id: analyzer.analyze(updated, scanned_at)}
+    _commit(store, repositories, analyses, store.next_id)
+    return dict(analyses[repository_id])
+
+
+def remove_repository(store, username, repository_id):
+    """Remove one of the caller's repositories and its analysis, and nothing else.
+
+    The id is never reused (next_id stays as it is), so it stays not found for good.
+    """
+    _get_owned(store, username, repository_id)
+    repositories = {key: repo for key, repo in store.repositories.items() if key != repository_id}
+    analyses = {key: analysis for key, analysis in store.analyses.items() if key != repository_id}
+    _commit(store, repositories, analyses, store.next_id)

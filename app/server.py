@@ -3,6 +3,9 @@
 Run it:
     python -m app.server              # http://localhost:8000
     python -m app.server --port 8080
+    python -m app.server --reset      # throw away saved data, start from the seed data
+
+Data is saved in data/registry.json (change it with --data), so it survives a restart.
 
 Who is calling: send the header "X-User: <username>". Without it you are "alice".
 
@@ -19,7 +22,7 @@ from http.server import BaseHTTPRequestHandler, HTTPServer
 from urllib.parse import parse_qs, urlsplit
 
 from . import service
-from .store import Store
+from .store import DataFileError, Store
 
 DEFAULT_USER = "alice"
 ROUTES = []
@@ -66,6 +69,12 @@ def register_repository(req):
 @route("GET", r"/repositories/(\d+)")
 def get_repository(req, repository_id):
     return 200, service.get_repository(req.store, req.user, int(repository_id))
+
+
+@route("DELETE", r"/repositories/(\d+)")
+def remove_repository(req, repository_id):
+    service.remove_repository(req.store, req.user, int(repository_id))
+    return 204, None
 
 
 @route("GET", r"/repositories/(\d+)/analysis")
@@ -164,10 +173,19 @@ class RegistryServer(HTTPServer):
 def main(argv=None):
     parser = argparse.ArgumentParser(description="Run the repository registry API.")
     parser.add_argument("--port", type=int, default=8000)
+    parser.add_argument("--data", default="data/registry.json",
+                        help="JSON file the data is saved in (default data/registry.json)")
+    parser.add_argument("--reset", action="store_true",
+                        help="Start from the seed data and overwrite the data file")
     args = parser.parse_args(argv)
 
-    server = RegistryServer(("127.0.0.1", args.port))
-    print(f"Repository registry running on http://localhost:{args.port} (Ctrl+C to stop)")
+    try:
+        store = Store(args.data, reset=args.reset)
+    except (DataFileError, OSError) as error:
+        raise SystemExit(f"Can't start: {error}")
+
+    server = RegistryServer(("127.0.0.1", args.port), store=store)
+    print(f"Repository registry running on http://localhost:{args.port}, data in {args.data} (Ctrl+C to stop)")
     try:
         server.serve_forever()
     except KeyboardInterrupt:

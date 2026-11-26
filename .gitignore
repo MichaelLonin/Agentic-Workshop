@@ -1,6 +1,9 @@
 # The watcher's local lock and memory. Never commit these.
 .watcher/
 
+# The app's saved data (python -m app.server). Runtime state, never commit it.
+data/
+
 # Python
 __pycache__/
 *.pyc

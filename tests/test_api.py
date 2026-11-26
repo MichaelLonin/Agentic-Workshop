@@ -111,6 +111,22 @@ class ApiTests(unittest.TestCase):
         _, repos = self.call("GET", "/repositories")
         self.assertEqual(len(repos), 2)
 
+    # TASK-002: DELETE /repositories/{id}
+
+    def test_remove_repository(self):
+        self.assertEqual(self.call("DELETE", "/repositories/1", user="alice"), (204, None))
+        for method, path in (("GET", "/repositories/1"), ("GET", "/repositories/1/analysis"),
+                             ("POST", "/repositories/1/scan"), ("DELETE", "/repositories/1")):
+            with self.subTest(method=method, path=path):
+                self.assertEqual(self.call(method, path, user="alice")[0], 404)
+        _, repos = self.call("GET", "/repositories", user="alice")
+        self.assertEqual([repo["id"] for repo in repos], [2])
+
+    def test_remove_is_denied_for_others_and_unknown_users(self):
+        self.assertEqual(self.call("DELETE", "/repositories/1", user="bob")[0], 403)
+        self.assertEqual(self.call("DELETE", "/repositories/1", user="mallory")[0], 401)
+        self.assertEqual(self.call("GET", "/repositories/1", user="alice")[0], 200)
+
     def test_register_duplicate_url_is_409(self):
         body = {"name": "copy", "url": "https://github.com/example-org/data-pipeline"}
         status, _ = self.call("POST", "/repositories", user="alice", body=body)

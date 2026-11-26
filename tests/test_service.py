@@ -1,4 +1,5 @@
 import unittest
+from copy import deepcopy
 
 from app import analyzer, service
 from app.store import Store
@@ -98,6 +99,38 @@ class ServiceTests(unittest.TestCase):
         self.assertEqual(analysis["scanned_at"], repo["last_scanned_at"])
         with self.assertRaises(service.Forbidden):
             service.get_repository(self.store, "alice", repo["id"])
+
+    # TASK-002: removing a repository
+
+    def test_owner_removes_repository_and_its_analysis(self):
+        service.remove_repository(self.store, "alice", 1)
+        names = [repo["name"] for repo in service.list_repositories(self.store, "alice")]
+        self.assertEqual(names, ["web-portal"])
+        self.assertNotIn(1, self.store.analyses)
+        for call in (service.get_repository, service.get_analysis, service.scan_repository,
+                     service.remove_repository):
+            with self.subTest(call=call.__name__):
+                with self.assertRaises(service.NotFound):
+                    call(self.store, "alice", 1)
+
+    def test_remove_is_denied_without_changing_anything(self):
+        before = (deepcopy(self.store.repositories), deepcopy(self.store.analyses), self.store.next_id)
+        for user, repository_id, error in (("mallory", 1, service.Unauthorized),
+                                           ("bob", 1, service.Forbidden),
+                                           ("alice", 999, service.NotFound)):
+            with self.subTest(user=user, repository_id=repository_id):
+                with self.assertRaises(error):
+                    service.remove_repository(self.store, user, repository_id)
+        self.assertEqual((self.store.repositories, self.store.analyses, self.store.next_id), before)
+
+    def test_remove_leaves_other_repositories_alone_and_never_reuses_the_id(self):
+        others = {key: deepcopy((repo, self.store.analyses[key]))
+                  for key, repo in self.store.repositories.items() if key != 4}
+        service.remove_repository(self.store, "chen", 4)
+        self.assertEqual({key: (repo, self.store.analyses[key])
+                          for key, repo in self.store.repositories.items()}, others)
+        new = service.register_repository(self.store, "chen", {"name": "x", "url": "https://example.com/x"})
+        self.assertEqual(new["id"], 5)
 
 
 if __name__ == "__main__":

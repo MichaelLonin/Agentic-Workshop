@@ -1,10 +1,10 @@
 task: TASK-002
-status: READY_FOR_DEVELOPMENT
-assigned_to: DEVELOPER
+status: READY_FOR_QA
+assigned_to: QA
 attempt: 1
-updated_by: ARCHITECT
+updated_by: DEVELOPER
 routing_mode: SELF_ROUTING
-routing_reason: Design for DELETE /repositories/{id} with file persistence is ready for implementation
+routing_reason: DELETE /repositories/{id} and file persistence are built and 44 tests pass; READY_FOR_QA goes to QA
 result: DONE
 issue:
   type:
