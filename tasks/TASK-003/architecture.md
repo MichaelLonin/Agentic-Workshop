@@ -39,4 +39,13 @@
 
 ## Security notes
 
-- None reported. Ownership is checked before the body is validated, and only `description` can be written, so `owner`, `url` and `id` can't be changed through this endpoint.
+- Design point: ownership is checked before the body is validated, and only `description` can be written, so `owner`, `url` and `id` can't be changed through this endpoint.
+
+### SECURITY review, attempt 1 (QA finding `SECURITY_RISK`, qa.md)
+
+Reviewed `service.update_description` and `server.Handler._send`. **Verdict: all three findings accepted, no code change, back to QA.**
+
+1. **Description stored unsanitised (HTML/script text): accepted.** Every response goes through `json.dumps` with `Content-Type: application/json`, and nothing in `app/` renders HTML, so the text is data and can't run as a script here. Sanitising on *input* would be the wrong fix: it corrupts legitimate text (`a < b`, `<3`, code snippets), and registration (TASK-001) already stores descriptions as sent. The risk lives where text is shown, so this is the **rule for any future UI or consumer that puts descriptions (or names, or URLs) into HTML: escape on output.** The 2,000-character limit from TASK-001 bounds the size.
+   - *Optional hardening, not blocking:* send `X-Content-Type-Options: nosniff` on every response, so that old browsers never treat a JSON response as HTML. That would be its own small request.
+2. **403 vs 404 reveals ids: accepted.** Same reasoning as TASK-002's Security notes: ids are sequential, `X-User` isn't authentication, and the behaviour is consistent across all endpoints. Changing it would be a product decision for all endpoints at once.
+3. **Last write wins: accepted.** This was already stated under Risks. The server is single-threaded and each save is atomic, so updates never interleave or corrupt the file. The worst case is that a quick second edit replaces the first, which is ordinary for a free-text field. Optimistic locking (version or `If-Match`) isn't part of the requirements.

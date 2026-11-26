@@ -3,3 +3,4 @@
 {"timestamp":"2026-11-26T15:36:30Z","task":"TASK-003","agent":"ARCHITECT","event":"DESIGN_READY","to":"DEVELOPER","attempt":1,"reason":"Design for PATCH /repositories/{id} (description only) is ready"}
 {"timestamp":"2026-11-26T15:37:42Z","task":"TASK-003","agent":"DEVELOPER","event":"IMPLEMENTATION_READY","to":"QA","attempt":1,"reason":"PATCH description built as designed, 52 tests pass"}
 {"timestamp":"2026-11-26T15:50:00Z","task":"TASK-003","agent":"QA","event":"QA_FAILED","to":"SECURITY","type":"SECURITY_RISK","attempt":1,"reason":"ACs pass in one QA run; new write endpoint needs security review (unsanitised description, 403 reveals ids, last write wins)"}
+{"timestamp":"2026-11-26T15:51:32Z","task":"TASK-003","agent":"SECURITY","event":"SECURITY_REVIEWED","to":"QA","attempt":1,"reason":"Accepted: unsanitised description (JSON-only API, escape on output in any UI), 403 id existence, last write wins; no code change"}
