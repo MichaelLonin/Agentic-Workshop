@@ -1,2 +1,3 @@
 {"timestamp":"2026-11-26T15:34:29Z","task":"TASK-003","agent":"TRAINER","event":"TASK_CREATED","to":"PRODUCT_BA","reason":"New task created"}
 {"timestamp":"2026-11-26T15:35:17Z","task":"TASK-003","agent":"PRODUCT_BA","event":"REQUIREMENTS_READY","to":"ARCHITECT","reason":"Requirements and delegated Product Owner decisions are ready"}
+{"timestamp":"2026-11-26T15:36:30Z","task":"TASK-003","agent":"ARCHITECT","event":"DESIGN_READY","to":"DEVELOPER","attempt":1,"reason":"Design for PATCH /repositories/{id} (description only) is ready"}
