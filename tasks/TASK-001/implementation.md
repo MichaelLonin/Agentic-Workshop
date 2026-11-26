@@ -28,7 +28,10 @@ A real implementation, not a stub. `POST /repositories` registers a repository f
 
 ## Tests
 
-`python3 -m unittest` → `Ran 33 tests ... OK` (24 before, plus 9 new).
+- Attempt 1: `python3 -m unittest` → `Ran 33 tests ... OK` (24 before, plus 9 new).
+- Attempt 2: new tests are `test_register_rejects_urls_with_credentials_without_echoing_them`, `test_register_enforces_field_length_limits` (over the limit is rejected, exactly at the limit is accepted) and `test_description_update_uses_the_same_length_limit` in `tests/test_service.py`. In `tests/test_api.py` they are `test_register_url_with_credentials_is_400_without_echo`, `test_oversized_negative_or_bad_content_length_is_refused_unread` (a raw socket sends only the headers, so getting an answer at all proves the body wasn't read) and `test_body_just_under_the_limit_is_still_read`.
+- `python3 -m unittest tests.test_service tests.test_api tests.test_store tests.test_new_task` → `OK`.
+- **Whole suite: `Ran 71 tests ... FAILED (errors=2)`. These are expected and are not hidden.** Both are QA's `test_risk_*` tests in `tests/test_qa_task001.py`, which record the old risky behaviour. They now raise the new rejections: `test_risk_credentials_in_url_are_stored_and_returned` → `Invalid: 'url' must not contain a username or password`, and `test_risk_no_length_limit_on_fields` → `Invalid: 'description' must be at most 2000 characters`. As the security review says, QA owns those tests and will turn them around. I didn't change them.
 
 ## Known limits
 
