@@ -2,3 +2,4 @@
 {"timestamp":"2026-11-26T15:24:37Z","task":"TASK-001","agent":"PRODUCT_BA","event":"REQUIREMENTS_READY","to":"ARCHITECT","reason":"Requirements and delegated product decisions are ready"}
 {"timestamp":"2026-11-26T15:26:06Z","task":"TASK-001","agent":"ARCHITECT","event":"DESIGN_READY","to":"DEVELOPER","reason":"Design for POST /repositories is ready"}
 {"timestamp":"2026-11-26T15:29:49Z","task":"TASK-001","agent":"DEVELOPER","event":"IMPLEMENTATION_READY","to":"QA","reason":"POST /repositories built as designed, 33 tests pass"}
+{"timestamp":"2026-11-26T15:38:23Z","task":"TASK-001","agent":"QA","event":"QA_FAILED","to":"SECURITY","type":"SECURITY_RISK","attempt":1,"reason":"ACs pass; credentials in URLs are stored and returned, and there are no size limits"}
