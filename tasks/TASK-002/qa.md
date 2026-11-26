@@ -34,8 +34,14 @@ Notes for the Product Owner and SECURITY, not blocking this task:
 
 ## Verdict
 
-PASSED.
+All six acceptance criteria PASS. Routed to SECURITY before the Product Owner: this task adds the first on-disk storage of registry data, which needs a security review.
 
 ## Failure type
 
-None.
+`SECURITY_RISK`: not a broken criterion, but security-relevant behaviour that only SECURITY can accept or ask to change:
+
+1. All registry data (users, repositories, analyses) is written in plain text to `data/registry.json` (`Store._save`); nothing restricts who can read the file.
+2. `403` on `DELETE` of another user's repository tells them that the id exists, while a missing id gives `404` (`test_http_wrong_user_and_unknown_user`). The design keeps this for consistency; SECURITY should confirm.
+3. Nothing locks the data file, so two server processes on the same file would overwrite each other's changes (noted in `implementation.md`).
+
+If SECURITY accepts these, the task can go straight back to `READY_FOR_QA` → `READY_FOR_PO`; no code change is needed for the acceptance criteria.

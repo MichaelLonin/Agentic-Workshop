@@ -3,3 +3,4 @@
 {"timestamp":"2026-11-26T15:31:54Z","task":"TASK-002","agent":"ARCHITECT","event":"DESIGN_READY","to":"DEVELOPER","attempt":1,"reason":"Design for DELETE /repositories/{id} with file persistence is ready"}
 {"timestamp":"2026-11-26T15:34:45Z","task":"TASK-002","agent":"DEVELOPER","event":"IMPLEMENTATION_READY","to":"QA","attempt":1,"reason":"DELETE and save-first persistence built as designed, 44 tests pass"}
 {"timestamp":"2026-11-26T15:43:47Z","task":"TASK-002","agent":"QA","event":"QA_PASSED","to":"PRODUCT_OWNER","attempt":1,"reason":"All six acceptance criteria pass; removal survives restart and a failed save changes nothing"}
+{"timestamp":"2026-11-26T15:48:29Z","task":"TASK-002","agent":"QA","event":"QA_FAILED","to":"SECURITY","type":"SECURITY_RISK","attempt":1,"reason":"ACs pass; new on-disk persistence needs security review (plain-text data file, 403 reveals ids, no file lock)"}
