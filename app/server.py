@@ -145,7 +145,9 @@ class Handler(BaseHTTPRequestHandler):
             return
 
         if allowed:
-            self._send(405, {"error": f"{method} is not allowed here. Allowed: {', '.join(sorted(set(allowed)))}"})
+            # Built from ROUTES, so it is always all and only the methods this path supports.
+            allow = ", ".join(sorted(set(allowed)))
+            self._send(405, {"error": f"{method} is not allowed here. Allowed: {allow}"}, headers={"Allow": allow})
         else:
             self._send(404, {"error": f"No endpoint for {method} {path}"})
 
@@ -155,11 +157,13 @@ class Handler(BaseHTTPRequestHandler):
             return None
         return json.loads(self.rfile.read(length).decode("utf-8"))
 
-    def _send(self, status, payload):
+    def _send(self, status, payload, headers=None):
         data = b"" if payload is None else json.dumps(payload, indent=2).encode("utf-8")
         self.send_response(status)
         self.send_header("Content-Type", "application/json")
         self.send_header("Content-Length", str(len(data)))
+        for name, value in (headers or {}).items():
+            self.send_header(name, value)
         self.end_headers()
         self.wfile.write(data)
 

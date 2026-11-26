@@ -1,10 +1,10 @@
 task: TASK-004
-status: READY_FOR_DEVELOPMENT
-assigned_to: DEVELOPER
+status: READY_FOR_QA
+assigned_to: QA
 attempt: 1
-updated_by: ARCHITECT
+updated_by: DEVELOPER
 routing_mode: SELF_ROUTING
-routing_reason: Design for the Allow header on 405 responses is ready for implementation
+routing_reason: Allow header on 405 is built and 55 tests pass; READY_FOR_QA goes to QA. Note the AC3 vs PATCH point in implementation.md
 result: DONE
 issue:
   type:

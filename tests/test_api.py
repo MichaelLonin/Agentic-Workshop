@@ -122,6 +122,44 @@ class ApiTests(unittest.TestCase):
         _, repos = self.call("GET", "/repositories", user="alice")
         self.assertEqual([repo["id"] for repo in repos], [2])
 
+    # TASK-004: Allow header on 405
+
+    def raw(self, method, path):
+        """(status, Allow header as a set of methods or None, JSON body) for one request."""
+        request = urllib.request.Request(self.base + path, method=method)
+        try:
+            with OPENER.open(request, timeout=5) as response:
+                status, headers, data = response.status, response.headers, response.read()
+        except urllib.error.HTTPError as error:
+            status, headers, data = error.code, error.headers, error.read()
+        allow = headers.get("Allow")
+        methods = {part.strip() for part in allow.split(",")} if allow is not None else None
+        return status, methods, json.loads(data or b"null")
+
+    def test_405_lists_the_allowed_methods(self):
+        # PATCH on /repositories/{id} comes from TASK-003, so it is supported and listed (AC1).
+        expected = {
+            ("PUT", "/health"): {"GET"},
+            ("PUT", "/repositories"): {"GET", "POST"},
+            ("POST", "/repositories/1"): {"DELETE", "GET", "PATCH"},
+            ("PUT", "/repositories/1/analysis"): {"GET"},
+            ("PUT", "/repositories/1/scan"): {"POST"},
+        }
+        for (method, path), methods in expected.items():
+            with self.subTest(method=method, path=path):
+                status, allow, body = self.raw(method, path)
+                self.assertEqual((status, allow), (405, methods))
+                self.assertEqual(body, {"error": f"{method} is not allowed here. Allowed: {', '.join(sorted(methods))}"})
+
+    def test_405_ignores_query_string_and_trailing_slash(self):
+        for path in ("/repositories?page=2", "/repositories/", "/repositories/?page=2"):
+            with self.subTest(path=path):
+                self.assertEqual(self.raw("PUT", path)[:2], (405, {"GET", "POST"}))
+
+    def test_no_allow_header_on_404_or_success(self):
+        self.assertEqual(self.raw("PUT", "/nope")[:2], (404, None))
+        self.assertEqual(self.raw("GET", "/health")[:2], (200, None))
+
     # TASK-003: PATCH /repositories/{id}
 
     def test_update_description(self):
