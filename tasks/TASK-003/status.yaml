@@ -1,11 +1,11 @@
 task: TASK-003
-status: READY_FOR_QA
-assigned_to: QA
+status: BLOCKED
+assigned_to: SECURITY
 attempt: 1
-updated_by: DEVELOPER
+updated_by: QA
 routing_mode: SELF_ROUTING
-routing_reason: PATCH /repositories/{id} description is built and 52 tests pass; READY_FOR_QA goes to QA
-result: DONE
+routing_reason: All ACs pass in one QA run; the new write endpoint goes to SECURITY for review before the Product Owner; SECURITY_RISK goes to SECURITY
+result: FAILED
 issue:
-  type:
-  description:
+  type: SECURITY_RISK
+  description: ACs pass. Needs security review - descriptions are stored unsanitised (HTML/script text), 403 vs 404 reveals which ids exist, and last write wins. Details in qa.md.
