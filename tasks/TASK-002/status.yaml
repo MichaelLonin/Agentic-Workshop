@@ -1,11 +1,11 @@
 task: TASK-002
-status: READY_FOR_QA
-assigned_to: QA
+status: READY_FOR_PO
+assigned_to: PRODUCT_OWNER
 attempt: 1
-updated_by: DEVELOPER
+updated_by: QA
 routing_mode: SELF_ROUTING
-routing_reason: DELETE /repositories/{id} and file persistence are built and 44 tests pass; READY_FOR_QA goes to QA
-result: DONE
+routing_reason: All six acceptance criteria pass with QA's own tests (13 tests, suite of 78 OK); READY_FOR_PO goes to PRODUCT_OWNER
+result: PASSED
 issue:
   type:
   description:
