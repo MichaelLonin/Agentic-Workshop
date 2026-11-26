@@ -6,6 +6,7 @@ features usually start here.
 """
 
 from datetime import datetime, timezone
+from urllib.parse import urlsplit
 
 from . import analyzer
 
@@ -30,6 +31,10 @@ class Forbidden(ServiceError):
 
 class NotFound(ServiceError):
     status = 404
+
+
+class Conflict(ServiceError):
+    status = 409
 
 
 def now_utc():
@@ -65,6 +70,55 @@ def list_repositories(store, username):
         for repo in sorted(store.repositories.values(), key=lambda r: r["id"])
         if repo["owner"] == username
     ]
+
+
+def _is_web_url(url):
+    """True for an absolute http or https URL with a host."""
+    try:
+        parts = urlsplit(url)
+        return parts.scheme in ("http", "https") and bool(parts.hostname)
+    except ValueError:
+        return False
+
+
+def register_repository(store, username, body):
+    """Register a new repository for the caller and analyse it straight away.
+
+    Everything is checked before anything is stored, so a rejected request creates nothing.
+    """
+    require_user(store, username)
+    if not isinstance(body, dict):
+        raise Invalid("Send a JSON object with 'name' and 'url'")
+
+    name = body.get("name")
+    if not isinstance(name, str) or not name.strip():
+        raise Invalid("'name' is required and must not be blank")
+    url = body.get("url")
+    if not isinstance(url, str) or not _is_web_url(url.strip()):
+        raise Invalid("'url' is required and must be an absolute http or https URL with a host")
+    description = body.get("description")
+    if description is not None and not isinstance(description, str):
+        raise Invalid("'description' must be a string or null")
+
+    name, url = name.strip(), url.strip()
+    if any(repo["url"].strip() == url for repo in store.repositories.values()):
+        raise Conflict("This URL is already registered")
+
+    now = now_utc()
+    repo = {
+        "id": store.next_id,
+        "name": name,
+        "url": url,
+        "description": description,
+        "owner": username,
+        "registered_at": now,
+        "last_scanned_at": now,
+    }
+    analysis = analyzer.analyze(repo, now)
+    store.repositories[repo["id"]] = repo
+    store.analyses[repo["id"]] = analysis
+    store.next_id += 1
+    return dict(repo)
 
 
 def get_repository(store, username, repository_id):

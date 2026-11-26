@@ -89,6 +89,33 @@ class ApiTests(unittest.TestCase):
             OPENER.open(request, timeout=5)
         self.assertEqual(caught.exception.code, 400)
 
+    # TASK-001: POST /repositories
+
+    def test_register_repository(self):
+        body = {"name": "new-service", "url": "https://github.com/example-org/new-service", "description": "Jobs"}
+        status, repo = self.call("POST", "/repositories", user="bob", body=body)
+        self.assertEqual(status, 201)
+        self.assertEqual((repo["name"], repo["owner"], repo["description"]), ("new-service", "bob", "Jobs"))
+
+        status, repos = self.call("GET", "/repositories", user="bob")
+        self.assertIn(repo["id"], [r["id"] for r in repos])
+        status, analysis = self.call("GET", f"/repositories/{repo['id']}/analysis", user="bob")
+        self.assertEqual((status, analysis["repository_id"]), (200, repo["id"]))
+        status, _ = self.call("GET", f"/repositories/{repo['id']}", user="alice")
+        self.assertEqual(status, 403)
+
+    def test_register_invalid_body_is_400_and_creates_nothing(self):
+        status, body = self.call("POST", "/repositories", body={"name": "x", "url": "not a url"})
+        self.assertEqual(status, 400)
+        self.assertIn("error", body)
+        _, repos = self.call("GET", "/repositories")
+        self.assertEqual(len(repos), 2)
+
+    def test_register_duplicate_url_is_409(self):
+        body = {"name": "copy", "url": "https://github.com/example-org/data-pipeline"}
+        status, _ = self.call("POST", "/repositories", user="alice", body=body)
+        self.assertEqual(status, 409)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -13,6 +13,7 @@ The sample app keeps a list of code repositories that users have registered, and
 |---|---|---|
 | `GET /health` | Returns `{"status": "ok"}` | |
 | `GET /repositories` | Lists your repositories: `id`, `name`, `url`, `owner` | 401 unknown user |
+| `POST /repositories` | Registers a repository you own. Body: `name`, `url` (absolute http or https), optional `description`. Returns 201 and the new repository; its analysis is ready straight away | 400 invalid body, 401, 409 URL already registered |
 | `GET /repositories/{id}` | One repository, with `description`, `registered_at` and `last_scanned_at` | 401, 403 not yours, 404 |
 | `GET /repositories/{id}/analysis` | The latest analysis: languages, files, lines of code, open findings, health score, contributors, summary | 401, 403, 404 |
 | `POST /repositories/{id}/scan` | Runs the analysis again now and returns it | 401, 403, 404 |
