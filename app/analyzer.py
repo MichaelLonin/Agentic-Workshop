@@ -15,6 +15,11 @@ LANGUAGE_PAIRS = [
 ]
 
 
+def findings_text(count):
+    """'1 open finding', otherwise '<count> open findings' (0 and 2 or more stay plural)."""
+    return "1 open finding" if count == 1 else f"{count} open findings"
+
+
 def analyze(repository, scanned_at):
     """Return an analysis summary for one repository."""
     digest = hashlib.sha256(repository["url"].encode("utf-8")).digest()
@@ -34,5 +39,5 @@ def analyze(repository, scanned_at):
         "open_findings": open_findings,
         "health_score": 55 + digest[8] % 45,
         "contributors": contributors,
-        "summary": f"{files} files, mostly {main_language}. {open_findings} open findings.",
+        "summary": f"{files} files, mostly {main_language}. {findings_text(open_findings)}.",
     }

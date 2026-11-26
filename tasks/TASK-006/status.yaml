@@ -1,10 +1,10 @@
 task: TASK-006
-status: READY_FOR_DEVELOPMENT
-assigned_to: DEVELOPER
+status: READY_FOR_QA
+assigned_to: QA
 attempt: 1
-updated_by: ARCHITECT
+updated_by: DEVELOPER
 routing_mode: SELF_ROUTING
-routing_reason: Design for singular "1 open finding" wording is ready for implementation
+routing_reason: Singular '1 open finding' wording is built and its tests pass; READY_FOR_QA goes to QA
 result: DONE
 issue:
   type:
